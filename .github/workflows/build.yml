@@ -1,0 +1,137 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        go-version: ['1.21', '1.22', 'stable']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run go fmt
+      run: go fmt ./...
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Build debug version
+      run: go build -o writepilot_debug.exe ./cmd/writepilot
+
+    - name: Build production version
+      run: go build -ldflags "-H windowsgui" -o writepilot.exe ./cmd/writepilot
+
+    - name: Verify binary exists
+      run: |
+        if (Test-Path writepilot.exe) {
+          Write-Host "✓ Production build successful"
+          Get-Item writepilot.exe | Format-Table -Property Name, Length
+        } else {
+          Write-Error "Production binary not found"
+          exit 1
+        }
+
+    - name: Verify debug binary exists
+      run: |
+        if (Test-Path writepilot_debug.exe) {
+          Write-Host "✓ Debug build successful"
+          Get-Item writepilot_debug.exe | Format-Table -Property Name, Length
+        } else {
+          Write-Error "Debug binary not found"
+          exit 1
+        }
+
+    - name: Check config.json syntax
+      run: |
+        $config = Get-Content config.json | ConvertFrom-Json
+        if ($config.language -and $config.provider) {
+          Write-Host "✓ config.json is valid JSON"
+        } else {
+          Write-Error "config.json is invalid"
+          exit 1
+        }
+
+    - name: Upload artifacts
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: writepilot-windows-${{ matrix.go-version }}
+        path: |
+          writepilot.exe
+          config.json
+          README.md
+        retention-days: 7
+
+  lint:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v4
+      with:
+        go-version: 'stable'
+
+    - name: Install golangci-lint
+      run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+    - name: Run linter
+      run: golangci-lint run ./... --timeout 5m --verbose
+      continue-on-error: true
+
+    - name: Check for secrets (with allow list)
+      run: |
+        Write-Host "Checking for potential secrets..."
+        $secrets = @(
+          "api_key.*=.*[a-z0-9]{20,}",
+          "password.*=.*[^\s]{10,}",
+          "token.*=.*[a-z0-9]{20,}"
+        )
+        
+        foreach ($pattern in $secrets) {
+          $matches = Select-String -Path *.json, *.go -Pattern $pattern -ErrorAction SilentlyContinue
+          if ($matches -and $_ -notmatch "YOUR_.*_HERE") {
+            Write-Warning "Possible secret found: $($matches[0].Line)"
+          }
+        }
+        Write-Host "✓ Secret check complete"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Verify documentation
+      run: |
+        files=("README.md" "LICENSE" "CONTRIBUTING.md" "CHANGELOG.md" "docs/ARCHITECTURE.md" "docs/ADDING_LLM_PROVIDERS.md")
+        for file in "${files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing $file"
+            exit 1
+          fi
+        done
+        echo "✓ All documentation files present"

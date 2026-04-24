@@ -1,5 +1,10 @@
 # WritePilot
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/dl/)
+[![Windows 10+](https://img.shields.io/badge/Windows-10+-0078d4.svg)](https://www.microsoft.com/windows/)
+[![GitHub Release](https://img.shields.io/github/v/release/krstdmr/writepilot?include_prereleases)](https://github.com/krstdmr/writepilot/releases)
+
 **For non-native language learners who write daily but want to improve without interrupting their workflow.**
 
 ## Why WritePilot?
@@ -297,6 +302,18 @@ write-pilot-plugin/
 ├── go.mod
 └── README.md
 ```
+
+---
+
+## Contributing
+
+Want to help improve WritePilot? See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+- Reporting bugs
+- Requesting features
+- Submitting pull requests
+- Adding new LLM providers
+
+We welcome all contributions — code, documentation, translations, and feedback!
 
 ---
 
