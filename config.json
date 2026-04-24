@@ -1,0 +1,11 @@
+{
+    "_comment": "WritePilot configuration. Place this file next to writepilot.exe.",
+    "language": "Norwegian",
+    "mode": "correct",
+    "hotkey": "Ctrl+Shift+Space",
+    "provider": "groq",
+    "api_key": "YOUR_GROQ_API_KEY_HERE",
+    "api_base_url": "",
+    "model": "",
+    "timeout_seconds": 30
+}

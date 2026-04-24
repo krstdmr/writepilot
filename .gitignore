@@ -1,0 +1,28 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go build cache
+*.o
+*.a
+*.out
+go.work
+go.work.sum
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+writepilot_new.exe
+writepilot.exe~
