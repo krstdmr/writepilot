@@ -210,7 +210,7 @@ No internet required. Text never leaves your machine.
 
 > ⚠️ **Important**: When using cloud-based LLM providers (Groq, OpenAI, Google Gemini), your text is sent to external servers. **You are responsible** for ensuring you do not send sensitive, confidential, or personal data through WritePilot. 
 >
-> - **Never correct:** passwords, API keys, PII (personal identifiable information), financial data, or confidential business content
+> - **Never provide:** passwords, API keys, PII (personal identifiable information), financial data, or confidential business content
 > - **Best practice:** Use local Ollama for any sensitive corrections — your text stays entirely on your machine
 > - Review your provider's privacy policy to understand their data handling practices
 
