@@ -39,6 +39,10 @@ type Config struct {
 	// Model name to use. Defaults to a sensible choice per provider.
 	Model string `json:"model"`
 
+	// AutoPaste controls whether WritePilot automatically pastes the corrected
+	// text after correction. Default: false (manual paste with Ctrl+V).
+	AutoPaste bool `json:"auto_paste"`
+
 	// TimeoutSeconds for the LLM HTTP request. Default: 30.
 	TimeoutSeconds int `json:"timeout_seconds"`
 }

@@ -25,6 +25,7 @@ const (
 	vkAlt     = uint16(0x12) // VK_MENU (Alt)
 	vkWin     = uint16(0x5B) // VK_LWIN
 	vkC       = uint16(0x43) // VK_C
+	vkV       = uint16(0x56) // VK_V
 )
 
 // keyboardINPUT mirrors the Windows INPUT structure for keyboard events.
@@ -115,4 +116,17 @@ func GetSelectedText() (string, error) {
 	}
 
 	return "", fmt.Errorf("no text selected — select some text before pressing the hotkey")
+}
+
+// PasteText simulates Ctrl+V to paste the clipboard content into the active
+// window. This is used for auto-paste functionality to automatically insert
+// the corrected text without requiring manual paste.
+func PasteText() {
+	releaseModifiers()                  // drop any modifiers held from previous operations
+	pressKey(vkControl, 0)              // Ctrl down
+	pressKey(vkV, 0)                    // V down
+	time.Sleep(50 * time.Millisecond)   // hold briefly so the app sees the chord
+	pressKey(vkV, keyeventfKeyup)       // V up
+	pressKey(vkControl, keyeventfKeyup) // Ctrl up
+	time.Sleep(100 * time.Millisecond)  // wait for the paste operation to complete
 }

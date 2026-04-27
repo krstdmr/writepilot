@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"time"
 	"unicode"
 
 	"golang.design/x/clipboard"
@@ -88,7 +89,17 @@ func runPipeline(cfg *config.Config) {
 
 	clipboard.Write(clipboard.FmtText, []byte(result))
 	log.Printf("[WritePilot] done — corrected text copied to clipboard (%d chars)", len(result))
-	_ = notify.Toast("WritePilot — Done", "Corrected text copied. Paste with Ctrl+V.")
+
+	// Auto-paste if enabled
+	if cfg.AutoPaste {
+		// Give the clipboard write a moment to settle
+		time.Sleep(100 * time.Millisecond)
+		capture.PasteText()
+		log.Println("[WritePilot] auto-pasted corrected text")
+		_ = notify.Toast("WritePilot — Done", "Corrected text pasted!")
+	} else {
+		_ = notify.Toast("WritePilot — Done", "Corrected text copied. Paste with Ctrl+V.")
+	}
 }
 
 // setupLogging configures the logger to write to writepilot.log next to the

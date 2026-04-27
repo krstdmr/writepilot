@@ -9,7 +9,7 @@
 
 ## Why WritePilot?
 
-Imagine you're at work in Norway, writing in Norwegian. A customer needs an urgent reply, and you've typed a quick email — but you're unsure if your grammar is perfect. Do you risk sending it with mistakes, or spend some time copying it to ChatGPT, editing it, and pasting back?
+Imagine you're in a country where your non-native language skills are put to the test daily. A friend needs an urgent reply, and you've typed a quick email — but you're unsure if your grammar is perfect. Do you risk sending it with mistakes, or spend some time copying it to ChatGPT, editing it, and pasting back?
 
 WritePilot eliminates that friction. Press a hotkey. Done. Your text is corrected in seconds, right where you're typing — in Outlook, Teams, Slack, Word, or any app. No context switching. No tab juggling.
 
@@ -19,7 +19,7 @@ This tool is designed for language learners like you who want to:
 - ✅ Write faster without worrying about every typo
 - ✅ Keep working in your chosen app (no copy-paste to web tools)
 - ✅ Get instant corrections with explanations, so mistakes become lessons
-- ✅ Improve your Norwegian (or any language) through daily practice, not formal study
+- ✅ Improve any language through daily practice, not formal study
 - ✅ Choose any LLM provider — cloud-based (Groq, OpenAI, Gemini) or **100% private with local Ollama**
 
 Perfect for emails, chat messages, documentation, or any urgent writing task where correctness matters.
@@ -50,10 +50,13 @@ Sends the text to your chosen LLM with a correction prompt
 Writes the corrected text back to the clipboard
         │
         ▼
-Windows toast notification: "Corrected text copied. Paste with Ctrl+V."
+Optionally auto-pastes (Ctrl+V) the corrected text into your app
         │
         ▼
-Press Ctrl+V in your app → done
+Windows toast notification: "Done!" (auto-paste) or "Paste with Ctrl+V" (manual)
+        │
+        ▼
+Done! (auto-paste mode) or Press Ctrl+V (manual mode)
 ```
 
 ---
@@ -99,13 +102,14 @@ Edit `config.json` in the same directory as `writepilot.exe`:
 
 ```json
 {
-  "language":        "Norwegian",
+  "language":        "English",
   "mode":            "correct",
   "hotkey":          "Ctrl+Shift+Space",
   "provider":        "groq",
   "api_key":         "YOUR_API_KEY_HERE",
   "api_base_url":    "",
   "model":           "",
+  "auto_paste":      false,
   "timeout_seconds": 30
 }
 ```
@@ -114,13 +118,14 @@ Edit `config.json` in the same directory as `writepilot.exe`:
 
 | Field | Default | Description |
 |---|---|---|
-| `language` | `Norwegian` | The language to correct toward. Any language name works, e.g. `English`, `German`, `Spanish`. |
+| `language` | `English` | The language to correct toward. Any language name works, e.g. `English`, `German`, `Spanish`. |
 | `mode` | `correct` | `correct` — return only the fixed text. `suggest` — return fixed text **plus** a list of corrections with explanations (great for learning). |
 | `hotkey` | `Ctrl+Shift+Space` | The global keyboard shortcut that triggers WritePilot. See [Hotkey format](#hotkey-format). |
 | `provider` | `groq` | LLM backend: `groq`, `openai`, `gemini`, `ollama`. |
 | `api_key` | *(required)* | Your API key for the chosen provider. Leave empty for `ollama`. |
 | `api_base_url` | *(auto)* | Override the provider's base URL. Leave empty to use the built-in default. |
 | `model` | *(auto)* | Override the model name. Leave empty to use the provider's recommended default. |
+| `auto_paste` | `false` | If `true`, automatically paste the corrected text with `Ctrl+V` after correction. If `false`, you paste manually. |
 | `timeout_seconds` | `30` | How long to wait for an LLM response before giving up. |
 
 ### Hotkey format
@@ -155,7 +160,7 @@ Free tier: ~10,000 requests/day, no credit card required.
 
 ---
 
-### Google Gemini *(excellent Norwegian quality)*
+### Google Gemini *(excellent quality across languages)*
 
 1. Sign up at [aistudio.google.com](https://aistudio.google.com)
 2. Click **Get API key**
@@ -201,6 +206,16 @@ No internet required. Text never leaves your machine.
 
 ---
 
+## Privacy & Data Security
+
+> ⚠️ **Important**: When using cloud-based LLM providers (Groq, OpenAI, Google Gemini), your text is sent to external servers. **You are responsible** for ensuring you do not send sensitive, confidential, or personal data through WritePilot. 
+>
+> - **Never correct:** passwords, API keys, PII (personal identifiable information), financial data, or confidential business content
+> - **Best practice:** Use local Ollama for any sensitive corrections — your text stays entirely on your machine
+> - Review your provider's privacy policy to understand their data handling practices
+
+---
+
 ## Running WritePilot
 
 **During development** (console visible):
@@ -235,17 +250,17 @@ go build -ldflags "-H windowsgui" -o writepilot.exe ./cmd/writepilot
 
 ### Real-world examples
 
-**Urgent customer email (Outlook)**
-- You've typed a quick reply to a customer in Outlook and need to send it in 2 minutes
+**Urgent email to a friend (Outlook)**
+- You've typed a quick reply to a friend in Outlook and need to send it in 2 minutes
 - Select your message, press `Ctrl+Shift+Space`, paste — your email is now grammatically correct
 - No switching tabs, no leaving Outlook, no delays
 
 **Quick Slack message to a colleague**
-- You want to ask something in Norwegian but worry about typos slowing down communication
+- You want to ask something in your non-native language but worry about typos slowing down communication
 - Write in the message box, press the hotkey, paste — your message is polished before hitting Send
 
 **Documentation or support ticket**
-- You're filling out an urgent support form or writing internal documentation in Norwegian
+- You're filling out an urgent support form or writing internal documentation in your non-native language
 - Select a paragraph, press the hotkey, paste — you look professional, grammar is perfect
 
 **Suggest mode for learning**
