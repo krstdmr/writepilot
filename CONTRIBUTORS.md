@@ -1,1 +1,0 @@
-# Contributors properly configured
