@@ -48,7 +48,7 @@ func main() {
 	defer hk.Unregister()
 
 	log.Printf("[WritePilot] running — hotkey: %s | language: %s | mode: %s | provider: %s (%s)",
-		cfg.Hotkey, cfg.Language, cfg.Mode, cfg.Provider, cfg.Model)
+		cfg.Hotkey, *cfg.Language, cfg.Mode, cfg.Provider, cfg.Model)
 
 	// Block on hotkey events; each press spawns a goroutine for the pipeline.
 	for range hk.Keydown() {
