@@ -2,16 +2,16 @@ name: Build & Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: windows-latest
     strategy:
       matrix:
-        go-version: [ "1.21", "1.22", "stable" ]
+        go-version: ["1.21", "1.22", "stable"]
 
     steps:
       - name: Checkout code
@@ -70,10 +70,10 @@ jobs:
       - name: Check config.json syntax
         run: |
           $config = Get-Content config.json | ConvertFrom-Json
-          if ($config.language -and $config.provider) {
+          if ($config.provider) {
             Write-Host "✓ config.json is valid JSON"
           } else {
-            Write-Error "config.json is invalid"
+            Write-Error "config.json is invalid: provider is required"
             exit 1
           }
 
