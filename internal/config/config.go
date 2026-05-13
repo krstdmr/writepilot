@@ -10,7 +10,8 @@ import (
 // Config holds all WritePilot settings loaded from config.json.
 type Config struct {
 	// Language to correct toward, e.g. "Norwegian", "English".
-	Language string `json:"language"`
+	// If nil, the LLM will auto-detect the language from the text.
+	Language *string `json:"language"`
 
 	// Mode controls LLM output format:
 	//   "correct"  – return only the corrected text (default)
@@ -94,9 +95,6 @@ func configSearchPaths() []string {
 }
 
 func (c *Config) applyDefaults() {
-	if c.Language == "" {
-		c.Language = "Norwegian"
-	}
 	if c.Mode == "" {
 		c.Mode = "correct"
 	}

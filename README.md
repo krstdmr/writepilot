@@ -102,7 +102,6 @@ Edit `config.json` in the same directory as `writepilot.exe`:
 
 ```json
 {
-  "language":        "English",
   "mode":            "correct",
   "hotkey":          "Ctrl+Shift+Space",
   "provider":        "groq",
@@ -118,7 +117,7 @@ Edit `config.json` in the same directory as `writepilot.exe`:
 
 | Field | Default | Description |
 |---|---|---|
-| `language` | `English` | The language to correct toward. Any language name works, e.g. `English`, `German`, `Spanish`. |
+| `language` | *(optional)* | The language to correct toward, e.g. `English`, `German`, `Spanish`, `Norwegian`. If not provided, the LLM will auto-detect the language from the text and correct it accordingly. |
 | `mode` | `correct` | `correct` — return only the fixed text. `suggest` — return fixed text **plus** a list of corrections with explanations (great for learning). |
 | `hotkey` | `Ctrl+Shift+Space` | The global keyboard shortcut that triggers WritePilot. See [Hotkey format](#hotkey-format). |
 | `provider` | `groq` | LLM backend: `groq`, `openai`, `gemini`, `ollama`. |

@@ -96,10 +96,14 @@ func Correct(cfg *config.Config, text string) (string, error) {
 
 // systemPrompt builds the LLM system prompt based on the user's config.
 func systemPrompt(cfg *config.Config) string {
-	lang := cfg.Language
+	var langSpec string
+	if cfg.Language != nil {
+		langSpec = *cfg.Language
+	}
 
 	if cfg.Mode == "suggest" {
-		return fmt.Sprintf(`You are a language assistant helping a non-native speaker improve their %s writing.
+		if langSpec != "" {
+			return fmt.Sprintf(`You are a language assistant helping a non-native speaker improve their %s writing.
 
 The user will provide a piece of text they wrote. Your tasks:
 1. Correct ALL grammar, spelling, punctuation, and style mistakes.
@@ -112,15 +116,43 @@ Format:
 
 --- Corrections ---
 • Original: "..." → Corrected: "..." — <explanation>
-• ...`, lang, lang)
+• ...`, langSpec, langSpec)
+		}
+		// Auto-detect language mode for "suggest"
+		return `You are a language assistant helping a non-native speaker improve their writing.
+
+The user will provide a piece of text they wrote. Your tasks:
+1. Detect the language of the text automatically.
+2. Correct ALL grammar, spelling, punctuation, and style mistakes in that language.
+3. Preserve the original meaning and tone exactly — do not paraphrase unnecessarily.
+4. After the corrected text, add a section titled "--- Corrections ---" that lists every change you made. For each change, show the original phrase, the corrected phrase, and a brief explanation of why it was wrong. This helps the user learn from their mistakes.
+5. Write the corrections section in the same language as the original text.
+
+Format:
+<corrected text>
+
+--- Corrections ---
+• Original: "..." → Corrected: "..." — <explanation>
+• ...`
 	}
 
 	// Default: "correct" mode — return only the fixed text.
-	return fmt.Sprintf(`You are a language assistant helping a non-native speaker improve their %s writing.
+	if langSpec != "" {
+		return fmt.Sprintf(`You are a language assistant helping a non-native speaker improve their %s writing.
 
 The user will provide a piece of text they wrote. Your tasks:
 1. Correct ALL grammar, spelling, and punctuation mistakes.
 2. Preserve the original meaning and tone exactly — do not paraphrase unnecessarily.
 3. Return ONLY the corrected text, nothing else. No explanations, no comments, no labels.
-4. If the text contains no mistakes, return it unchanged.`, lang)
+4. If the text contains no mistakes, return it unchanged.`, langSpec)
+	}
+	// Auto-detect language mode for "correct"
+	return `You are a language assistant helping a non-native speaker improve their writing.
+
+The user will provide a piece of text they wrote. Your tasks:
+1. Detect the language of the text automatically.
+2. Correct ALL grammar, spelling, and punctuation mistakes in that language.
+3. Preserve the original meaning and tone exactly — do not paraphrase unnecessarily.
+4. Return ONLY the corrected text, nothing else. No explanations, no comments, no labels.
+5. If the text contains no mistakes, return it unchanged.`
 }
