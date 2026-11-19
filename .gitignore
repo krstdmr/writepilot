@@ -26,3 +26,6 @@ go.work.sum
 *.tmp
 writepilot_new.exe
 writepilot.exe~
+
+# Local config with credentials (template: config.example.json)
+config.json
