@@ -5,6 +5,7 @@ package notify
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -12,8 +13,12 @@ import (
 // It uses PowerShell's WinRT bindings to show a native notification.
 // Notification failures are non-fatal; callers should log the returned error.
 func Toast(title, message string) error {
-	// Both title and message are hardcoded call-site strings (never LLM output),
-	// so PowerShell script interpolation is safe here.
+	// Title and message are built from fixed strings plus provider names from
+	// config.json (never LLM output). They are placed inside single-quoted
+	// PowerShell literals, where the only special character is the single
+	// quote itself, so doubling it keeps the script intact.
+	title = strings.ReplaceAll(title, "'", "''")
+	message = strings.ReplaceAll(message, "'", "''")
 	script := fmt.Sprintf(
 		`$ErrorActionPreference='Stop'
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime]|Out-Null

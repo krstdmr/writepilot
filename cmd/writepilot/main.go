@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -47,8 +48,16 @@ func main() {
 	}
 	defer hk.Unregister()
 
-	log.Printf("[WritePilot] running — hotkey: %s | language: %s | mode: %s | provider: %s (%s)",
-		cfg.Hotkey, *cfg.Language, cfg.Mode, cfg.Provider, cfg.Model)
+	language := "auto-detect"
+	if cfg.Language != nil && *cfg.Language != "" {
+		language = *cfg.Language
+	}
+	chain := make([]string, 0, len(cfg.Fallbacks)+1)
+	for _, ep := range cfg.Endpoints() {
+		chain = append(chain, ep.Label())
+	}
+	log.Printf("[WritePilot] running — hotkey: %s | language: %s | mode: %s | providers: %s | timeouts: %ds per attempt, %ds total",
+		cfg.Hotkey, language, cfg.Mode, strings.Join(chain, " → "), cfg.AttemptTimeoutSeconds, cfg.TimeoutSeconds)
 
 	// Block on hotkey events; each press spawns a goroutine for the pipeline.
 	for range hk.Keydown() {
@@ -77,18 +86,29 @@ func runPipeline(cfg *config.Config) {
 		return // silent — user probably didn't select anything
 	}
 
-	log.Printf("[WritePilot] captured %d chars — calling %s…", len(text), cfg.Provider)
+	log.Printf("[WritePilot] captured %d chars — calling %s…", len(text), cfg.Endpoint.Label())
 
-	result, err := llm.Correct(cfg, text)
+	res, err := llm.Correct(cfg, text)
 	if err != nil {
 		log.Printf("[WritePilot] LLM error: %v", err)
-		// Notify the user so they know something went wrong.
-		_ = notify.Toast("WritePilot — Error", "LLM request failed. Check writepilot.log for details.")
+		// Tell the user why: overloaded, rate limited, timed out, …
+		msg := "LLM request failed. Check writepilot.log for details."
+		var ce *llm.ChainError
+		if errors.As(err, &ce) {
+			msg = "All providers failed: " + ce.Summary()
+		}
+		_ = notify.Toast("WritePilot — Error", msg)
 		return
 	}
 
-	clipboard.Write(clipboard.FmtText, []byte(result))
-	log.Printf("[WritePilot] done — corrected text copied to clipboard (%d chars)", len(result))
+	clipboard.Write(clipboard.FmtText, []byte(res.Text))
+	log.Printf("[WritePilot] done via %s — corrected text copied to clipboard (%d chars)", res.Used.Label(), len(res.Text))
+
+	title := "WritePilot — Done"
+	if res.FellBack() {
+		title = fmt.Sprintf("WritePilot — Done via %s (%s)",
+			res.Used.Provider, (&llm.ChainError{Failures: res.Failures}).Summary())
+	}
 
 	// Auto-paste if enabled
 	if cfg.AutoPaste {
@@ -96,9 +116,9 @@ func runPipeline(cfg *config.Config) {
 		time.Sleep(100 * time.Millisecond)
 		capture.PasteText()
 		log.Println("[WritePilot] auto-pasted corrected text")
-		_ = notify.Toast("WritePilot — Done", "Corrected text pasted!")
+		_ = notify.Toast(title, "Corrected text pasted!")
 	} else {
-		_ = notify.Toast("WritePilot — Done", "Corrected text copied. Paste with Ctrl+V.")
+		_ = notify.Toast(title, "Corrected text copied. Paste with Ctrl+V.")
 	}
 }
 

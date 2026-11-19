@@ -43,8 +43,12 @@ Copy-Item config.example.json config.json
   "api_key":         "YOUR_API_KEY_HERE",
   "api_base_url":    "",
   "model":           "",
+  "fallbacks": [
+    { "provider": "gemini", "api_key": "YOUR_GEMINI_KEY", "model": "" }
+  ],
   "auto_paste":      false,
-  "timeout_seconds": 30
+  "timeout_seconds": 30,
+  "attempt_timeout_seconds": 10
 }
 ```
 
@@ -57,15 +61,21 @@ Copy-Item config.example.json config.json
 | `api_key` | — | API key for the provider. Leave empty for `ollama`. |
 | `api_base_url` | *(per provider)* | Override the provider's endpoint. |
 | `model` | *(per provider)* | Override the model (defaults below). |
+| `fallbacks` | `[]` | Extra providers tried in order when the primary fails. Each entry takes `provider`, `api_key`, `api_base_url` and `model`, with the same defaults. |
 | `auto_paste` | `false` | Paste the corrected text automatically with `Ctrl+V`. |
-| `timeout_seconds` | `30` | LLM request timeout. |
+| `timeout_seconds` | `30` | Total time for one correction, across all retries and fallbacks. |
+| `attempt_timeout_seconds` | `10` | Time for a single request before WritePilot gives up on it. Raise it for slow local models. |
+
+### Retries and fallbacks
+
+When a provider is overloaded (503), rate-limited (429), has a server error or times out, WritePilot retries it once after a short pause. Then it moves to the next entry in `fallbacks`. A timeout skips the retry when a fallback exists, and other errors (bad key, unknown model) go straight to the next provider. The toast tells you when a fallback answered and why; every attempt, with the provider's own error message, is logged to `writepilot.log`.
 
 ### Providers
 
 | Provider | Default model | Get a key |
 |---|---|---|
-| `groq` | `llama-3.3-70b-versatile` | [console.groq.com](https://console.groq.com) |
-| `gemini` | `gemini-2.0-flash` | [aistudio.google.com](https://aistudio.google.com) |
+| `groq` | `qwen/qwen3.8-27b` | [console.groq.com](https://console.groq.com) |
+| `gemini` | `gemini-3.1-flash-lite` | [aistudio.google.com](https://aistudio.google.com) |
 | `openai` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com) |
 | `ollama` | `llama3.1` | Local, no key — install from [ollama.com](https://ollama.com), then `ollama pull llama3.1` |
 
@@ -86,7 +96,8 @@ Logs are written to `writepilot.log` next to the executable (`Get-Content .\writ
 | Symptom | Fix |
 |---|---|
 | Nothing happens on the hotkey | Another app may own it — change `hotkey`. |
-| "LLM request failed" toast | Usually an invalid API key or network issue; see the log. |
+| "All providers failed: … overloaded (503)" | The provider is out of capacity, not your quota. Add a fallback provider. |
+| "All providers failed: … HTTP 401" | Invalid API key for that provider; the log has the provider's message. |
 | `config.json not found` | Put `config.json` in the same folder as `writepilot.exe`. |
 | No toast notification | Check Focus Assist / Do Not Disturb. |
 

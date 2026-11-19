@@ -23,6 +23,30 @@ type Config struct {
 	// Supported keys: Space, Return, F1-F12, A-Z, 0-9
 	Hotkey string `json:"hotkey"`
 
+	// Endpoint is the primary LLM provider. Its fields (provider, api_key,
+	// api_base_url, model) sit at the top level of config.json.
+	Endpoint
+
+	// Fallbacks are tried in order when the primary provider is overloaded,
+	// rate-limited, times out or rejects the request.
+	Fallbacks []Endpoint `json:"fallbacks"`
+
+	// AutoPaste controls whether WritePilot automatically pastes the corrected
+	// text after correction. Default: false (manual paste with Ctrl+V).
+	AutoPaste bool `json:"auto_paste"`
+
+	// TimeoutSeconds is the total time budget for one correction, across all
+	// retries and fallbacks. Default: 30.
+	TimeoutSeconds int `json:"timeout_seconds"`
+
+	// AttemptTimeoutSeconds limits a single HTTP request before WritePilot
+	// gives up on it and retries or moves to the next provider. Default: 10
+	// (capped at TimeoutSeconds). Raise it for slow local models.
+	AttemptTimeoutSeconds int `json:"attempt_timeout_seconds"`
+}
+
+// Endpoint describes one LLM provider to call.
+type Endpoint struct {
 	// Provider selects the LLM backend:
 	//   "groq"   – Groq API (default, fast, generous free tier)
 	//   "openai" – OpenAI API
@@ -39,13 +63,17 @@ type Config struct {
 
 	// Model name to use. Defaults to a sensible choice per provider.
 	Model string `json:"model"`
+}
 
-	// AutoPaste controls whether WritePilot automatically pastes the corrected
-	// text after correction. Default: false (manual paste with Ctrl+V).
-	AutoPaste bool `json:"auto_paste"`
+// Label identifies the endpoint in logs and notifications, e.g. "groq/qwen/qwen3.8-27b".
+func (e Endpoint) Label() string {
+	return e.Provider + "/" + e.Model
+}
 
-	// TimeoutSeconds for the LLM HTTP request. Default: 30.
-	TimeoutSeconds int `json:"timeout_seconds"`
+// Endpoints returns the primary endpoint followed by the fallbacks, in the
+// order they should be tried.
+func (c *Config) Endpoints() []Endpoint {
+	return append([]Endpoint{c.Endpoint}, c.Fallbacks...)
 }
 
 // Load reads config.json from the directory of the running executable.
@@ -101,6 +129,22 @@ func (c *Config) applyDefaults() {
 	if c.Hotkey == "" {
 		c.Hotkey = "Ctrl+Shift+Space"
 	}
+	c.Endpoint.applyDefaults()
+	for i := range c.Fallbacks {
+		c.Fallbacks[i].applyDefaults()
+	}
+	if c.TimeoutSeconds <= 0 {
+		c.TimeoutSeconds = 30
+	}
+	if c.AttemptTimeoutSeconds <= 0 {
+		c.AttemptTimeoutSeconds = 10
+	}
+	if c.AttemptTimeoutSeconds > c.TimeoutSeconds {
+		c.AttemptTimeoutSeconds = c.TimeoutSeconds
+	}
+}
+
+func (c *Endpoint) applyDefaults() {
 	if c.Provider == "" {
 		c.Provider = "groq"
 	}
@@ -121,14 +165,11 @@ func (c *Config) applyDefaults() {
 		case "openai":
 			c.Model = "gpt-4o-mini"
 		case "gemini":
-			c.Model = "gemini-2.0-flash"
+			c.Model = "gemini-3.1-flash-lite"
 		case "ollama":
 			c.Model = "llama3.1"
 		default:
-			c.Model = "llama-3.3-70b-versatile"
+			c.Model = "qwen/qwen3.8-27b"
 		}
-	}
-	if c.TimeoutSeconds <= 0 {
-		c.TimeoutSeconds = 30
 	}
 }
