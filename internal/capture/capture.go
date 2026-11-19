@@ -12,9 +12,24 @@ import (
 )
 
 var (
-	user32    = syscall.MustLoadDLL("user32.dll")
-	sendInput = user32.MustFindProc("SendInput")
+	user32                     = syscall.MustLoadDLL("user32.dll")
+	sendInput                  = user32.MustFindProc("SendInput")
+	getForegroundWindow        = user32.MustFindProc("GetForegroundWindow")
+	getClipboardSequenceNumber = user32.MustFindProc("GetClipboardSequenceNumber")
 )
+
+// ForegroundWindow returns a handle to the window that currently has focus.
+func ForegroundWindow() uintptr {
+	h, _, _ := getForegroundWindow.Call()
+	return h
+}
+
+// clipboardSequence returns the clipboard's change counter, which Windows
+// increments every time any program writes to the clipboard (0 if unavailable).
+func clipboardSequence() uintptr {
+	n, _, _ := getClipboardSequenceNumber.Call()
+	return n
+}
 
 const (
 	inputKeyboard  = uint32(1)
@@ -87,34 +102,47 @@ func simulateCtrlC() {
 	time.Sleep(50 * time.Millisecond)   // hold briefly so the app sees the chord
 	pressKey(vkC, keyeventfKeyup)       // C up
 	pressKey(vkControl, keyeventfKeyup) // Ctrl up
-	time.Sleep(400 * time.Millisecond)  // extended wait for older Win32 apps like Notepad
+	// No fixed wait here: GetSelectedText polls the clipboard, which covers
+	// slow apps (e.g. Notepad) without delaying fast ones.
 }
 
-// GetSelectedText saves the current clipboard content, simulates Ctrl+C to
-// copy whatever text is selected in the foreground application, then returns
-// the newly copied text. Returns an error if nothing was selected or the
-// clipboard did not change within 2 seconds.
+// GetSelectedText simulates Ctrl+C to copy whatever text is selected in the
+// foreground application and returns it. It detects the copy through the
+// clipboard's change counter, so selecting the same text that is already on
+// the clipboard still works. Returns an error if nothing was copied within
+// 2 seconds or the copied content has no text.
 func GetSelectedText() (string, error) {
-	// Snapshot what is currently in the clipboard.
-	previous := string(clipboard.Read(clipboard.FmtText))
+	seqBefore := clipboardSequence()
+	previous := string(clipboard.Read(clipboard.FmtText)) // only used if the counter is unavailable
 
-	// Send Ctrl+C to the active window.
 	simulateCtrlC()
 
-	// Check clipboard immediately (without sleep) for fast apps,
-	// then poll with 50ms intervals for up to 2 seconds total.
+	// Poll every 20ms for up to 2 seconds.
 	deadline := time.Now().Add(2 * time.Second)
+	changed := false
 	for {
-		current := string(clipboard.Read(clipboard.FmtText))
-		if current != previous && current != "" {
+		var current string
+		if seqBefore != 0 {
+			if clipboardSequence() != seqBefore {
+				changed = true
+				// The app may still be writing; an empty read means "not yet".
+				current = string(clipboard.Read(clipboard.FmtText))
+			}
+		} else if c := string(clipboard.Read(clipboard.FmtText)); c != previous {
+			changed, current = true, c
+		}
+		if current != "" {
 			return current, nil
 		}
 		if time.Now().After(deadline) {
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
 
+	if changed {
+		return "", fmt.Errorf("the copied selection contains no text")
+	}
 	return "", fmt.Errorf("no text selected — select some text before pressing the hotkey")
 }
 

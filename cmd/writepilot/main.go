@@ -80,6 +80,10 @@ func main() {
 func runPipeline(cfg *config.Config) {
 	log.Println("[WritePilot] hotkey pressed — capturing selected text…")
 
+	// Remember where the text came from, so auto-paste never lands in a
+	// different window the user switched to while the LLM was working.
+	sourceWindow := capture.ForegroundWindow()
+
 	text, err := capture.GetSelectedText()
 	if err != nil {
 		log.Printf("[WritePilot] capture: %v", err)
@@ -101,8 +105,10 @@ func runPipeline(cfg *config.Config) {
 		return
 	}
 
-	clipboard.Write(clipboard.FmtText, []byte(res.Text))
-	log.Printf("[WritePilot] done via %s — corrected text copied to clipboard (%d chars)", res.Used.Label(), len(res.Text))
+	// Only the corrected text goes to the clipboard; in suggest mode the
+	// explanations are shown in the notification instead of being pasted.
+	clipboard.Write(clipboard.FmtText, []byte(res.Corrected))
+	log.Printf("[WritePilot] done via %s — corrected text copied to clipboard (%d chars)", res.Used.Label(), len(res.Corrected))
 
 	title := "WritePilot — Done"
 	if res.FellBack() {
@@ -110,16 +116,45 @@ func runPipeline(cfg *config.Config) {
 			res.Used.Provider, (&llm.ChainError{Failures: res.Failures}).Summary())
 	}
 
-	// Auto-paste if enabled
+	pasted := false
 	if cfg.AutoPaste {
-		// Give the clipboard write a moment to settle
-		time.Sleep(100 * time.Millisecond)
-		capture.PasteText()
-		log.Println("[WritePilot] auto-pasted corrected text")
-		_ = notify.Toast(title, "Corrected text pasted!")
-	} else {
-		_ = notify.Toast(title, "Corrected text copied. Paste with Ctrl+V.")
+		if capture.ForegroundWindow() == sourceWindow {
+			// Give the clipboard write a moment to settle
+			time.Sleep(50 * time.Millisecond)
+			capture.PasteText()
+			pasted = true
+			log.Println("[WritePilot] auto-pasted corrected text")
+		} else {
+			log.Println("[WritePilot] active window changed — skipped auto-paste")
+		}
 	}
+
+	msg := "Corrected text copied. Paste with Ctrl+V."
+	switch {
+	case pasted:
+		msg = "Corrected text pasted!"
+	case cfg.AutoPaste:
+		msg = "You switched windows, so nothing was pasted. Paste with Ctrl+V."
+	}
+	if cfg.Mode == "suggest" {
+		msg = suggestMessage(res.Corrections, pasted)
+	}
+	_ = notify.Toast(title, msg)
+}
+
+// suggestMessage is the notification text in suggest mode: the corrections
+// list (shortened to fit a toast), or a note that there was nothing to fix.
+func suggestMessage(corrections string, pasted bool) string {
+	if corrections == "" {
+		corrections = "No mistakes found."
+	}
+	if r := []rune(corrections); len(r) > 350 {
+		corrections = string(r[:350]) + "…"
+	}
+	if !pasted {
+		corrections += "\n(Paste with Ctrl+V)"
+	}
+	return corrections
 }
 
 // setupLogging configures the logger to write to writepilot.log next to the

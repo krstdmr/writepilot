@@ -83,6 +83,8 @@ When a provider is overloaded (503), rate-limited (429), has a server error or t
 
 ### Suggest mode example
 
+Only the corrected text is pasted (or copied); the corrections appear in the notification:
+
 ```
 --- Corrections ---
 • Original: "Jeg gik hjem" → Corrected: "Jeg gikk hjem" — Past tense of "gå" is "gikk", not "gik"
