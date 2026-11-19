@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"writepilot/internal/config"
@@ -47,51 +50,97 @@ func Correct(cfg *config.Config, text string) (string, error) {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		time.Duration(cfg.TimeoutSeconds)*time.Second,
-	)
-	defer cancel()
-
 	url := cfg.APIBaseURL + "/chat/completions"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("create HTTP request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if cfg.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
-	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("HTTP request to %s: %w", cfg.Provider, err)
-	}
-	defer resp.Body.Close()
+	const maxAttempts = 3
+	var lastErr error
 
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read response body: %w", err)
-	}
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(cfg.TimeoutSeconds)*time.Second,
+		)
 
-	if resp.StatusCode != http.StatusOK {
-		// Try to surface the provider's error message.
-		var errResp chatResponse
-		if json.Unmarshal(raw, &errResp) == nil && errResp.Error != nil {
-			return "", fmt.Errorf("provider error (%d): %s", resp.StatusCode, errResp.Error.Message)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			cancel()
+			return "", fmt.Errorf("create HTTP request: %w", err)
 		}
-		return "", fmt.Errorf("provider returned HTTP %d", resp.StatusCode)
+		req.Header.Set("Content-Type", "application/json")
+		if cfg.APIKey != "" {
+			req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		// cancel the context regardless — the request is now done or failed
+		cancel()
+		if err != nil {
+			lastErr = fmt.Errorf("HTTP request to %s: %w", cfg.Provider, err)
+			// Retry on timeouts or temporary network errors
+			if errors.Is(err, context.DeadlineExceeded) {
+				time.Sleep(time.Duration(attempt) * time.Second)
+				continue
+			}
+			if ne, ok := err.(net.Error); ok && (ne.Timeout() || ne.Temporary()) {
+				time.Sleep(time.Duration(attempt) * time.Second)
+				continue
+			}
+			return "", lastErr
+		}
+
+		// Read and close body for this attempt
+		raw, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			lastErr = fmt.Errorf("read response body: %w", readErr)
+			time.Sleep(time.Duration(attempt) * time.Second)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			// Try to surface the provider's error message.
+			var errResp chatResponse
+			if json.Unmarshal(raw, &errResp) == nil && errResp.Error != nil {
+				lastErr = fmt.Errorf("provider error (%d): %s", resp.StatusCode, errResp.Error.Message)
+			} else {
+				lastErr = fmt.Errorf("provider returned HTTP %d", resp.StatusCode)
+			}
+
+			// Retry on rate-limit (429) or server errors (5xx).
+			if resp.StatusCode == 429 {
+				// Honor optional Retry-After header when present.
+				if ra := resp.Header.Get("Retry-After"); ra != "" {
+					if secs, err := strconv.Atoi(ra); err == nil {
+						time.Sleep(time.Duration(secs) * time.Second)
+						continue
+					}
+				}
+				time.Sleep(time.Duration(attempt) * time.Second)
+				continue
+			}
+			if resp.StatusCode >= 500 && resp.StatusCode <= 599 {
+				time.Sleep(time.Duration(attempt) * time.Second)
+				continue
+			}
+
+			return "", lastErr
+		}
+
+		var chatResp chatResponse
+		if err := json.Unmarshal(raw, &chatResp); err != nil {
+			return "", fmt.Errorf("parse response JSON: %w", err)
+		}
+		if len(chatResp.Choices) == 0 {
+			return "", fmt.Errorf("provider returned no choices")
+		}
+
+		return chatResp.Choices[0].Message.Content, nil
 	}
 
-	var chatResp chatResponse
-	if err := json.Unmarshal(raw, &chatResp); err != nil {
-		return "", fmt.Errorf("parse response JSON: %w", err)
+	if lastErr == nil {
+		lastErr = fmt.Errorf("request failed after %d attempts", maxAttempts)
 	}
-	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("provider returned no choices")
-	}
-
-	return chatResp.Choices[0].Message.Content, nil
+	return "", lastErr
 }
 
 // systemPrompt builds the LLM system prompt based on the user's config.

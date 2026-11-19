@@ -1,107 +1,42 @@
 # WritePilot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/dl/)
+[![Go 1.25+](https://img.shields.io/badge/Go-1.25+-blue.svg)](https://go.dev/dl/)
 [![Windows 10+](https://img.shields.io/badge/Windows-10+-0078d4.svg)](https://www.microsoft.com/windows/)
-[![GitHub Release](https://img.shields.io/github/v/release/krstdmr/writepilot?include_prereleases)](https://github.com/krstdmr/writepilot/releases)
 
-**For non-native language learners who write daily but want to improve without interrupting their workflow.**
-
-## Why WritePilot?
-
-Imagine you're in a country where your non-native language skills are put to the test daily. A friend needs an urgent reply, and you've typed a quick email — but you're unsure if your grammar is perfect. Do you risk sending it with mistakes, or spend some time copying it to ChatGPT, editing it, and pasting back?
-
-WritePilot eliminates that friction. Press a hotkey. Done. Your text is corrected in seconds, right where you're typing — in Outlook, Teams, Slack, Word, or any app. No context switching. No tab juggling.
-
-**But here's what makes it different:** In "suggest" mode, WritePilot doesn't just fix your text — it *explains* every change. You see exactly where you went wrong and why. Over time, you stop making those mistakes. You learn.
-
-This tool is designed for language learners like you who want to:
-- ✅ Write faster without worrying about every typo
-- ✅ Keep working in your chosen app (no copy-paste to web tools)
-- ✅ Get instant corrections with explanations, so mistakes become lessons
-- ✅ Improve any language through daily practice, not formal study
-- ✅ Choose any LLM provider — cloud-based (Groq, OpenAI, Gemini) or **100% private with local Ollama**
-
-Perfect for emails, chat messages, documentation, or any urgent writing task where correctness matters.
-
----
+A lightweight Windows background tool that corrects grammar and spelling in **any** text field — Outlook, Word, Teams, Slack, Notepad, browsers — without leaving the app. Built for non-native speakers who write daily: in **suggest** mode it also explains every change, so you learn from your mistakes.
 
 ## How it works
 
-A lightweight Windows background tool that corrects grammar and spelling in **any** text field — Outlook, Word, Teams, Slack, Notepad, browsers — without leaving the app you are working in.
+1. Select text in any app and press the hotkey (default `Ctrl+Shift+Space`).
+2. WritePilot copies the selection, sends it to your chosen LLM, and puts the corrected text on the clipboard.
+3. A toast notification appears. Paste with `Ctrl+V`, or let `auto_paste` do it for you.
 
-Press a hotkey while text is selected, wait a moment, then paste the corrected result with `Ctrl+V`. Optionally, enable **suggest** mode to also get an explanation of every change, so you learn from your mistakes.
+## Build
 
-**Flexibility:** Choose your LLM provider in `config.json` — swap between cloud APIs (Groq, OpenAI, Google Gemini) or run **locally with Ollama** for complete privacy with zero API costs.
-
-```
-Select text in any app
-        │
-        ▼
-Press hotkey (default: Ctrl+Shift+Space)
-        │
-        ▼
-WritePilot simulates Ctrl+C → reads the clipboard
-        │
-        ▼
-Sends the text to your chosen LLM with a correction prompt
-        │
-        ▼
-Writes the corrected text back to the clipboard
-        │
-        ▼
-Optionally auto-pastes (Ctrl+V) the corrected text into your app
-        │
-        ▼
-Windows toast notification: "Done!" (auto-paste) or "Paste with Ctrl+V" (manual)
-        │
-        ▼
-Done! (auto-paste mode) or Press Ctrl+V (manual mode)
-```
-
----
-
-## Requirements
-
-| Requirement | Details |
-|---|---|
-| OS | Windows 10 or later |
-| Go | 1.21 or later (for building from source) |
-| LLM provider | Groq, OpenAI, Google Gemini, or local Ollama |
-
----
-
-## Installation
-
-### Option A — Build from source
+Requires Windows 10+ and Go 1.25+.
 
 ```powershell
-git clone <repo-url>
-cd write-pilot-plugin
-
-go mod tidy
-
-# Development build (console window visible, useful for watching logs):
+# Debug build (console window visible, shows logs):
 go build -o writepilot.exe ./cmd/writepilot
 
-# Production build (no console window, runs silently in the background):
+# Production build (runs silently in the background):
 go build -ldflags "-H windowsgui" -o writepilot.exe ./cmd/writepilot
 ```
 
-Copy `writepilot.exe` and `config.json` to any folder, e.g. `C:\Tools\WritePilot\`.
+Create your config from the template, then put `writepilot.exe` and `config.json` in the same folder and run it. To start it with Windows, place a shortcut to it in `shell:startup`.
 
-### Option B — Pre-built binary
-
-Download `writepilot.exe` from the Releases page, place it in a folder alongside `config.json`.
-
----
+```powershell
+Copy-Item config.example.json config.json
+```
 
 ## Configuration
 
-Edit `config.json` in the same directory as `writepilot.exe`:
+`config.json` lives next to `writepilot.exe`. It is gitignored, so your API key stays local; only `config.example.json` is committed:
 
 ```json
 {
+  "language":        "",
   "mode":            "correct",
   "hotkey":          "Ctrl+Shift+Space",
   "provider":        "groq",
@@ -113,223 +48,47 @@ Edit `config.json` in the same directory as `writepilot.exe`:
 }
 ```
 
-### Fields
-
 | Field | Default | Description |
 |---|---|---|
-| `language` | *(optional)* | The language to correct toward, e.g. `English`, `German`, `Spanish`, `Norwegian`. If not provided, the LLM will auto-detect the language from the text and correct it accordingly. |
-| `mode` | `correct` | `correct` — return only the fixed text. `suggest` — return fixed text **plus** a list of corrections with explanations (great for learning). |
-| `hotkey` | `Ctrl+Shift+Space` | The global keyboard shortcut that triggers WritePilot. See [Hotkey format](#hotkey-format). |
-| `provider` | `groq` | LLM backend: `groq`, `openai`, `gemini`, `ollama`. |
-| `api_key` | *(required)* | Your API key for the chosen provider. Leave empty for `ollama`. |
-| `api_base_url` | *(auto)* | Override the provider's base URL. Leave empty to use the built-in default. |
-| `model` | *(auto)* | Override the model name. Leave empty to use the provider's recommended default. |
-| `auto_paste` | `false` | If `true`, automatically paste the corrected text with `Ctrl+V` after correction. If `false`, you paste manually. |
-| `timeout_seconds` | `30` | How long to wait for an LLM response before giving up. |
+| `language` | *(auto-detect)* | Target language, e.g. `English`, `Norwegian`. Empty lets the LLM detect it. |
+| `mode` | `correct` | `correct` returns only the fixed text. `suggest` also lists each correction with an explanation. |
+| `hotkey` | `Ctrl+Shift+Space` | Modifiers `Ctrl`, `Shift`, `Alt`, `Win` plus a key: `Space`, `Return`, `F1`–`F12`, `A`–`Z`, `0`–`9`. |
+| `provider` | `groq` | `groq`, `openai`, `gemini` or `ollama`. |
+| `api_key` | — | API key for the provider. Leave empty for `ollama`. |
+| `api_base_url` | *(per provider)* | Override the provider's endpoint. |
+| `model` | *(per provider)* | Override the model (defaults below). |
+| `auto_paste` | `false` | Paste the corrected text automatically with `Ctrl+V`. |
+| `timeout_seconds` | `30` | LLM request timeout. |
 
-### Hotkey format
+### Providers
+
+| Provider | Default model | Get a key |
+|---|---|---|
+| `groq` | `llama-3.3-70b-versatile` | [console.groq.com](https://console.groq.com) |
+| `gemini` | `gemini-2.0-flash` | [aistudio.google.com](https://aistudio.google.com) |
+| `openai` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com) |
+| `ollama` | `llama3.1` | Local, no key — install from [ollama.com](https://ollama.com), then `ollama pull llama3.1` |
+
+> ⚠️ **Privacy:** with cloud providers your text is sent to external servers. Don't send passwords, personal data or confidential content — use Ollama for sensitive text, it never leaves your machine.
+
+### Suggest mode example
 
 ```
-<modifier>+<modifier>+<key>
+--- Corrections ---
+• Original: "Jeg gik hjem" → Corrected: "Jeg gikk hjem" — Past tense of "gå" is "gikk", not "gik"
+• Original: "for at lære" → Corrected: "for å lære" — Use the infinitive "å lære" after "for"
 ```
-
-**Modifiers:** `Ctrl`, `Shift`, `Alt`, `Win`
-
-**Keys:** `Space`, `Return`, `F1`–`F12`, `A`–`Z`, `0`–`9`
-
-Examples:
-- `Ctrl+Shift+Space` *(default)*
-- `Ctrl+Alt+C`
-- `Alt+F9`
-
-> **Tip:** Avoid hotkeys that are already used by your applications (e.g. `Ctrl+C`, `Ctrl+V`).
-
----
-
-## LLM providers
-
-### Groq *(recommended — fast, generous free tier)*
-
-1. Sign up at [console.groq.com](https://console.groq.com)
-2. Create an API key under **API Keys**
-3. Set `"provider": "groq"` and paste the key into `"api_key"`
-4. Default model: `llama-3.3-70b-versatile`
-
-Free tier: ~10,000 requests/day, no credit card required.
-
----
-
-### Google Gemini *(excellent quality across languages)*
-
-1. Sign up at [aistudio.google.com](https://aistudio.google.com)
-2. Click **Get API key**
-3. Set in `config.json`:
-   ```json
-   "provider": "gemini",
-   "api_key": "YOUR_GEMINI_KEY"
-   ```
-4. Default model: `gemini-2.0-flash`
-
-Free tier: 1,500 requests/day, no credit card required.
-
----
-
-### OpenAI
-
-1. Sign up at [platform.openai.com](https://platform.openai.com)
-2. Go to **API Keys** and create a key
-3. Set in `config.json`:
-   ```json
-   "provider": "openai",
-   "api_key": "YOUR_OPENAI_KEY"
-   ```
-4. Default model: `gpt-4o-mini`
-
-New accounts receive $5 of free credits.
-
----
-
-### Ollama *(free, fully local, private)*
-
-1. Install Ollama from [ollama.com](https://ollama.com)
-2. Pull a model: `ollama pull llama3.1`
-3. Make sure Ollama is running (`ollama serve`)
-4. Set in `config.json`:
-   ```json
-   "provider": "ollama",
-   "api_key":  "",
-   "model":    "llama3.1"
-   ```
-
-No internet required. Text never leaves your machine.
-
----
-
-## Privacy & Data Security
-
-> ⚠️ **Important**: When using cloud-based LLM providers (Groq, OpenAI, Google Gemini), your text is sent to external servers. **You are responsible** for ensuring you do not send sensitive, confidential, or personal data through WritePilot. 
->
-> - **Never provide:** passwords, API keys, PII (personal identifiable information), financial data, or confidential business content
-> - **Best practice:** Use local Ollama for any sensitive corrections — your text stays entirely on your machine
-> - Review your provider's privacy policy to understand their data handling practices
-
----
-
-## Running WritePilot
-
-**During development** (console visible):
-```powershell
-.\writepilot.exe
-```
-
-**Daily use** (no console window, silent background process):
-```powershell
-# Build without console first:
-go build -ldflags "-H windowsgui" -o writepilot.exe ./cmd/writepilot
-
-# Then just double-click writepilot.exe, or add to startup
-```
-
-### Run at Windows startup (optional)
-
-1. Press `Win+R`, type `shell:startup`, press Enter
-2. Create a shortcut to `writepilot.exe` in that folder
-
----
-
-## Usage
-
-### Basic workflow
-
-1. In any application, **select the text** you want to correct
-2. Press the hotkey (default `Ctrl+Shift+Space`)
-3. A moment later, a Windows notification appears:
-   > *WritePilot — Done: Corrected text copied. Paste with Ctrl+V.*
-4. Press `Ctrl+V` to paste the corrected text
-
-### Real-world examples
-
-**Urgent email to a friend (Outlook)**
-- You've typed a quick reply to a friend in Outlook and need to send it in 2 minutes
-- Select your message, press `Ctrl+Shift+Space`, paste — your email is now grammatically correct
-- No switching tabs, no leaving Outlook, no delays
-
-**Quick Slack message to a colleague**
-- You want to ask something in your non-native language but worry about typos slowing down communication
-- Write in the message box, press the hotkey, paste — your message is polished before hitting Send
-
-**Documentation or support ticket**
-- You're filling out an urgent support form or writing internal documentation in your non-native language
-- Select a paragraph, press the hotkey, paste — you look professional, grammar is perfect
-
-**Suggest mode for learning**
-- Enable `"mode": "suggest"` in config.json
-- Press the hotkey — instead of just the corrected text, you also get:
-  ```
-  --- Corrections ---
-  • Original: "Jeg gik hjem" → Corrected: "Jeg gikk hjem" — Past tense of "gå" is "gikk", not "gik"
-  • Original: "for at lære" → Corrected: "for å lære" — Use the infinitive "å lære" after "for"
-  ```
-- Review the corrections, paste the corrected text, and **remember the rule next time**
-
----
-
-## Logs
-
-WritePilot writes logs to `writepilot.log` in the same directory as the executable. If something goes wrong (LLM error, hotkey conflict, etc.), check that file first.
-
-```powershell
-Get-Content .\writepilot.log -Tail 20
-```
-
----
 
 ## Troubleshooting
 
+Logs are written to `writepilot.log` next to the executable (`Get-Content .\writepilot.log -Tail 20`).
+
 | Symptom | Fix |
 |---|---|
-| Nothing happens when pressing the hotkey | Check `writepilot.log`. Another app may own that hotkey — change `hotkey` in `config.json`. |
-| "LLM request failed" toast | Check `writepilot.log` for the exact error. Usually an invalid API key or network issue. |
-| Paste produces garbled text | The app may have blocked `Ctrl+C`. Try selecting the text more carefully, or use a plain-text editor as an intermediary. |
-| `config.json not found` on startup | Make sure `config.json` is in the same folder as `writepilot.exe`. |
-| No toast notification | Toast notifications require Windows 10+ and must not be suppressed by Focus Assist / Do Not Disturb settings. |
-
----
-
-## Project structure
-
-```
-write-pilot-plugin/
-├── cmd/
-│   └── writepilot/
-│       └── main.go          ← entry point, hotkey loop, pipeline
-├── internal/
-│   ├── config/
-│   │   └── config.go        ← JSON config loading and defaults
-│   ├── capture/
-│   │   └── capture.go       ← Ctrl+C simulation + clipboard read (Windows)
-│   ├── llm/
-│   │   └── client.go        ← OpenAI-compatible HTTP client
-│   └── notify/
-│       └── notify.go        ← Windows toast notification via PowerShell
-├── config.json              ← user configuration
-├── go.mod
-└── README.md
-```
-
----
-
-## Contributing
-
-Want to help improve WritePilot? See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
-- Reporting bugs
-- Requesting features
-- Submitting pull requests
-- Adding new LLM providers
-
-We welcome all contributions — code, documentation, translations, and feedback!
-
----
+| Nothing happens on the hotkey | Another app may own it — change `hotkey`. |
+| "LLM request failed" toast | Usually an invalid API key or network issue; see the log. |
+| `config.json not found` | Put `config.json` in the same folder as `writepilot.exe`. |
+| No toast notification | Check Focus Assist / Do Not Disturb. |
 
 ## License
 

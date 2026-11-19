@@ -65,7 +65,7 @@ func Load() (*Config, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf(
-			"config.json not found; searched: %v — copy config.json next to the executable",
+			"config.json not found; searched: %v — copy config.example.json to config.json next to the executable and fill in your settings",
 			paths,
 		)
 	}

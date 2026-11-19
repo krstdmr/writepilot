@@ -1,0 +1,12 @@
+{
+    "_comment": "Template. Copy to config.json (gitignored), fill in your API key, and place it next to writepilot.exe.",
+    "language": "",
+    "mode": "correct",
+    "hotkey": "Ctrl+Shift+Space",
+    "provider": "groq",
+    "api_key": "YOUR_GROQ_API_KEY_HERE",
+    "api_base_url": "",
+    "model": "",
+    "auto_paste": true,
+    "timeout_seconds": 30
+}
